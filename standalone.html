@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>CinéDate — Find movies you both love</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎬</text></svg>" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0d0d1a; --bg2: #111125; --card-bg: #1a1a2e;
+      --card-border: rgba(255,255,255,0.06); --accent: #e50914;
+      --success: #00e676; --error: #ff1744; --like-color: #00e676;
+      --nope-color: #ff1744; --text: #fff; --text-muted: #8892a4;
+      --text-dim: #4a5568; --radius: 20px; --radius-sm: 12px;
+      --shadow: 0 20px 60px rgba(0,0,0,.6);
+      --glow-like: 0 0 30px rgba(0,230,118,.4);
+      --glow-nope: 0 0 30px rgba(255,23,68,.4);
+    }
+    html,body,#root { height:100%; width:100%; overflow:hidden; }
+    body { font-family:'Inter',system-ui,sans-serif; background:var(--bg); color:var(--text); -webkit-font-smoothing:antialiased; }
+    button { cursor:pointer; border:none; outline:none; font-family:inherit; }
+    img { display:block; }
+    ::-webkit-scrollbar { width:4px; height:4px; }
+    ::-webkit-scrollbar-thumb { background:rgba(255,255,255,.15); border-radius:4px; }
+
+    /* ─── LOGIN SCREEN ─── */
+    .login-screen { position:relative; width:100%; height:100%; display:flex; align-items:center; justify-content:center; overflow:hidden; background:radial-gradient(ellipse at center,#1a1a3e 0%,#0d0d1a 70%); }
+    .login-bg { position:absolute; inset:0; pointer-events:none; }
+    .star { position:absolute; background:#fff; border-radius:50%; opacity:0; animation:twinkle 3s ease-in-out infinite; }
+    @keyframes twinkle { 0%,100%{opacity:0;transform:scale(1)} 50%{opacity:.8;transform:scale(1.2)} }
+    .login-content { position:relative; z-index:1; display:flex; flex-direction:column; align-items:center; gap:32px; padding:24px; width:100%; max-width:480px; }
+    .logo-icon { font-size:64px; display:block; margin-bottom:12px; filter:drop-shadow(0 0 20px rgba(229,9,20,.5)); animation:float 4s ease-in-out infinite; }
+    @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
+    .logo-text { font-size:52px; font-weight:900; background:linear-gradient(135deg,#fff 0%,#e50914 50%,#ff6b6b 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; letter-spacing:-2px; line-height:1; margin-bottom:8px; }
+    .logo-sub { font-size:16px; color:var(--text-muted); }
+    .logo-sub em { font-style:italic; color:#ff6b6b; }
+    .login-instruction { font-size:18px; color:var(--text-muted); font-weight:500; }
+    .player-cards { width:100%; display:flex; flex-direction:column; gap:12px; }
+    .player-card { width:100%; display:flex; align-items:center; gap:16px; padding:20px 24px; background:var(--card-bg); border:1px solid var(--card-border); border-radius:var(--radius); color:var(--text); transition:all .2s ease; text-align:left; }
+    .player-card:hover { background:#232340; border-color:rgba(229,9,20,.4); transform:translateY(-2px); box-shadow:0 8px 30px rgba(229,9,20,.15); }
+    .player-avatar { width:52px; height:52px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:22px; flex-shrink:0; }
+    .player-avatar.p1 { background:linear-gradient(135deg,#e50914,#ff6b6b); }
+    .player-avatar.p2 { background:linear-gradient(135deg,#3a86ff,#8338ec); }
+    .player-info { flex:1; display:flex; flex-direction:column; gap:2px; }
+    .player-name { font-size:18px; font-weight:700; }
+    .player-desc { font-size:13px; color:var(--text-muted); }
+    .player-arrow { font-size:20px; color:var(--text-muted); transition:transform .2s,color .2s; }
+    .player-card:hover .player-arrow { transform:translateX(4px); color:var(--text); }
+    .player-divider { display:flex; align-items:center; gap:12px; color:var(--text-dim); font-size:13px; }
+    .player-divider::before,.player-divider::after { content:''; flex:1; height:1px; background:var(--card-border); }
+    .login-hint { font-size:13px; color:var(--text-dim); text-align:center; padding:12px 16px; background:rgba(255,255,255,.03); border-radius:var(--radius-sm); border:1px solid var(--card-border); }
+
+    /* ─── GENRE SCREEN ─── */
+    .genre-screen { width:100%; height:100%; display:flex; flex-direction:column; background:var(--bg); overflow:hidden; }
+    .genre-header { flex-shrink:0; padding:20px 20px 0; }
+    .genre-header-top { display:flex; flex-direction:column; align-items:center; gap:4px; margin-bottom:20px; text-align:center; }
+    .player-badge { font-size:12px; font-weight:600; padding:4px 12px; border-radius:20px; letter-spacing:.5px; text-transform:uppercase; margin-bottom:4px; }
+    .player-badge.p1 { background:rgba(229,9,20,.15); color:#ff6b6b; border:1px solid rgba(229,9,20,.3); }
+    .player-badge.p2 { background:rgba(58,134,255,.15); color:#74b3ff; border:1px solid rgba(58,134,255,.3); }
+    .genre-header-top h2 { font-size:28px; font-weight:800; letter-spacing:-.5px; }
+    .genre-header-top p { font-size:14px; color:var(--text-muted); }
+    .timeframe-section { display:flex; align-items:center; gap:12px; margin-bottom:4px; }
+    .section-label { font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); flex-shrink:0; }
+    .timeframe-chips { display:flex; gap:8px; overflow-x:auto; padding-bottom:4px; flex:1; scrollbar-width:none; }
+    .timeframe-chips::-webkit-scrollbar { display:none; }
+    .tf-chip { flex-shrink:0; padding:6px 14px; border-radius:20px; font-size:13px; font-weight:500; background:var(--card-bg); color:var(--text-muted); border:1px solid var(--card-border); transition:all .2s; white-space:nowrap; }
+    .tf-chip:hover { background:#232340; color:var(--text); }
+    .tf-chip.active { background:linear-gradient(135deg,#e50914,#ff6b6b); color:#fff; border-color:transparent; font-weight:600; }
+    .genre-grid-container { flex:1; overflow-y:auto; padding:16px 20px; }
+    .genre-loading { display:flex; flex-direction:column; align-items:center; justify-content:center; height:200px; gap:16px; color:var(--text-muted); }
+    .spinner { width:36px; height:36px; border:3px solid rgba(255,255,255,.1); border-top-color:#e50914; border-radius:50%; animation:spin .8s linear infinite; }
+    @keyframes spin { to { transform:rotate(360deg) } }
+    .genre-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:12px; }
+    .genre-card { position:relative; aspect-ratio:1.3; border-radius:var(--radius-sm); background:linear-gradient(135deg,var(--g1),var(--g2)); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; color:#fff; font-weight:600; transition:all .2s; border:2px solid transparent; overflow:hidden; }
+    .genre-card::before { content:''; position:absolute; inset:0; background:rgba(0,0,0,.2); }
+    .genre-card:hover { transform:scale(1.03); box-shadow:0 8px 24px rgba(0,0,0,.4); }
+    .genre-card.active { border-color:#fff; transform:scale(1.04); box-shadow:0 0 0 4px rgba(255,255,255,.2),0 8px 24px rgba(0,0,0,.4); }
+    .genre-emoji { position:relative; font-size:32px; }
+    .genre-name { position:relative; font-size:13px; font-weight:700; text-shadow:0 1px 4px rgba(0,0,0,.5); text-align:center; padding:0 8px; }
+    .genre-check { position:absolute; top:8px; right:8px; width:22px; height:22px; background:#fff; color:#000; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800; }
+    .genre-footer { flex-shrink:0; padding:16px 20px 24px; display:flex; flex-direction:column; gap:10px; background:linear-gradient(to top,var(--bg) 70%,transparent); }
+    .genre-selection-label { text-align:center; font-size:14px; color:var(--text-muted); }
+    .genre-selection-label strong { color:var(--text); }
+    .start-btn { width:100%; padding:16px; border-radius:var(--radius); font-size:17px; font-weight:700; background:linear-gradient(135deg,#e50914,#ff6b6b); color:#fff; display:flex; align-items:center; justify-content:center; gap:8px; transition:all .2s; box-shadow:0 4px 20px rgba(229,9,20,.3); }
+    .start-btn:hover:not(:disabled) { transform:translateY(-2px); box-shadow:0 8px 30px rgba(229,9,20,.5); }
+    .start-btn:disabled { opacity:.4; cursor:not-allowed; }
+    .btn-spinner { width:18px; height:18px; border:2px solid rgba(255,255,255,.3); border-top-color:#fff; border-radius:50%; animation:spin .8s linear infinite; }
+
+    /* ─── SWIPE SCREEN ─── */
+    .swipe-screen { width:100%; height:100%; display:flex; flex-direction:column; background:var(--bg); overflow:hidden; position:relative; }
+    .swipe-header { flex-shrink:0; display:flex; align-items:center; justify-content:space-between; padding:14px 20px; gap:12px; }
+    .back-btn { font-size:14px; font-weight:600; color:var(--text-muted); background:none; padding:6px 10px; border-radius:8px; transition:all .2s; }
+    .back-btn:hover { color:var(--text); background:rgba(255,255,255,.06); }
+    .header-center { display:flex; align-items:center; gap:8px; }
+    .header-logo { font-size:22px; }
+    .player-tag { font-size:13px; font-weight:700; padding:4px 12px; border-radius:20px; }
+    .player-tag.p1 { background:rgba(229,9,20,.15); color:#ff6b6b; border:1px solid rgba(229,9,20,.25); }
+    .player-tag.p2 { background:rgba(58,134,255,.15); color:#74b3ff; border:1px solid rgba(58,134,255,.25); }
+    .header-stats { min-width:60px; display:flex; justify-content:flex-end; }
+    .match-badge { font-size:13px; font-weight:700; padding:5px 12px; border-radius:20px; background:rgba(229,9,20,.15); border:1px solid rgba(229,9,20,.3); color:#ff6b6b; animation:badge-pop .3s cubic-bezier(.34,1.56,.64,1); }
+    @keyframes badge-pop { from{transform:scale(.5);opacity:0} to{transform:scale(1);opacity:1} }
+    .swipe-meta { flex-shrink:0; display:flex; align-items:center; gap:8px; padding:0 20px 8px; }
+    .swipe-genre { font-size:13px; font-weight:700; background:linear-gradient(135deg,#e50914,#ff6b6b); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+    .swipe-era { font-size:12px; color:var(--text-muted); background:rgba(255,255,255,.06); padding:2px 8px; border-radius:20px; }
+    .swipe-count { font-size:12px; color:var(--text-dim); margin-left:auto; }
+    .card-stack { flex:1; position:relative; margin:0 16px; min-height:0; }
+    .card-slot { position:absolute; inset:0; }
+    .card-slot-next { transform:scale(.95) translateY(10px); z-index:1; }
+    .card-slot-current { z-index:2; }
+    .loading-more { position:absolute; bottom:12px; left:50%; transform:translateX(-50%); display:flex; gap:6px; z-index:10; }
+    .loading-dot { width:6px; height:6px; background:rgba(255,255,255,.4); border-radius:50%; animation:dot-bounce 1s ease-in-out infinite; }
+    .loading-dot:nth-child(2){animation-delay:.15s} .loading-dot:nth-child(3){animation-delay:.3s}
+    @keyframes dot-bounce { 0%,100%{transform:translateY(0);opacity:.4} 50%{transform:translateY(-6px);opacity:1} }
+    .action-buttons { flex-shrink:0; display:flex; align-items:center; justify-content:center; gap:20px; padding:16px 20px 20px; }
+    .action-btn { border-radius:50%; display:flex; align-items:center; justify-content:center; transition:all .2s; border:2px solid; }
+    .action-btn-nope { width:60px; height:60px; font-size:24px; background:rgba(255,23,68,.1); border-color:rgba(255,23,68,.3); color:#ff1744; }
+    .action-btn-nope:hover { background:rgba(255,23,68,.2); border-color:#ff1744; transform:scale(1.1); box-shadow:var(--glow-nope); }
+    .action-btn-like { width:60px; height:60px; font-size:24px; background:rgba(0,230,118,.1); border-color:rgba(0,230,118,.3); color:#00e676; }
+    .action-btn-like:hover { background:rgba(0,230,118,.2); border-color:#00e676; transform:scale(1.1); box-shadow:var(--glow-like); }
+    .action-btn-super { width:48px; height:48px; font-size:18px; background:rgba(255,215,0,.1); border-color:rgba(255,215,0,.3); color:#ffd700; }
+    .out-of-cards { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; padding:24px; text-align:center; }
+    .ooc-icon { font-size:64px; }
+    .out-of-cards h2 { font-size:28px; font-weight:800; }
+    .out-of-cards > p { color:var(--text-muted); font-size:15px; }
+    .ooc-matches { background:rgba(229,9,20,.08); border:1px solid rgba(229,9,20,.2); border-radius:16px; padding:16px 20px; display:flex; flex-direction:column; gap:12px; width:100%; max-width:320px; }
+    .ooc-matches p { font-size:15px; }
+    .ooc-matches strong { color:#ff6b6b; }
+    .ooc-match-list { display:flex; flex-direction:column; gap:6px; text-align:left; }
+    .ooc-match-tag { font-size:13px; color:rgba(255,255,255,.7); }
+    .ooc-sub { font-size:14px; color:var(--text-dim); max-width:260px; }
+    .ooc-back-btn { padding:14px 28px; border-radius:14px; font-size:16px; font-weight:700; background:linear-gradient(135deg,#e50914,#ff6b6b); color:#fff; transition:all .2s; box-shadow:0 4px 20px rgba(229,9,20,.3); margin-top:8px; }
+    .ooc-back-btn:hover { transform:translateY(-2px); }
+    .matches-sidebar { position:absolute; top:100px; right:0; background:rgba(13,13,26,.9); border:1px solid rgba(229,9,20,.2); border-right:none; border-radius:12px 0 0 12px; padding:10px 12px; max-width:180px; z-index:20; backdrop-filter:blur(8px); }
+    .matches-sidebar-label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:#ff6b6b; display:block; margin-bottom:6px; }
+    .matches-sidebar-list { display:flex; flex-direction:column; gap:4px; }
+    .match-pill { font-size:11px; color:rgba(255,255,255,.7); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+    /* ─── MOVIE CARD ─── */
+    .movie-card { position:absolute; inset:0; border-radius:20px; overflow:hidden; cursor:grab; user-select:none; touch-action:none; box-shadow:0 24px 64px rgba(0,0,0,.7); background:var(--card-bg); will-change:transform; }
+    .movie-card.dragging { cursor:grabbing; }
+    .card-poster { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; pointer-events:none; }
+    .card-poster-placeholder { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; background:linear-gradient(135deg,#1a1a3e,#2d2d5e); font-size:16px; color:var(--text-muted); text-align:center; padding:20px; }
+    .card-gradient { position:absolute; inset:0; background:linear-gradient(to bottom,transparent 30%,rgba(0,0,0,.4) 50%,rgba(0,0,0,.85) 75%,rgba(0,0,0,.95) 100%); pointer-events:none; }
+    .badge { position:absolute; top:32px; padding:8px 20px; border-radius:8px; font-size:28px; font-weight:900; letter-spacing:2px; pointer-events:none; border:4px solid; }
+    .badge-like { right:24px; color:#00e676; border-color:#00e676; transform:rotate(15deg); text-shadow:0 0 20px rgba(0,230,118,.8); }
+    .badge-nope { left:24px; color:#ff1744; border-color:#ff1744; transform:rotate(-15deg); text-shadow:0 0 20px rgba(255,23,68,.8); }
+    .card-info { position:absolute; bottom:0; left:0; right:0; padding:20px 20px 16px; display:flex; flex-direction:column; gap:10px; }
+    .card-title-row { display:flex; align-items:flex-end; gap:10px; }
+    .card-title { font-size:22px; font-weight:800; line-height:1.1; text-shadow:0 2px 8px rgba(0,0,0,.8); flex:1; min-width:0; }
+    .card-year { font-size:15px; font-weight:600; color:rgba(255,255,255,.6); flex-shrink:0; padding-bottom:2px; }
+    .card-rating { display:flex; align-items:center; gap:6px; font-size:14px; font-weight:700; }
+    .card-votes { font-size:12px; font-weight:400; color:rgba(255,255,255,.5); }
+    .card-cast { display:flex; flex-wrap:wrap; gap:6px; }
+    .cast-tag { font-size:12px; font-weight:500; padding:3px 10px; border-radius:20px; background:rgba(255,255,255,.12); color:rgba(255,255,255,.85); }
+    .card-overview { font-size:13px; line-height:1.5; color:rgba(255,255,255,.7); }
+    .swipe-hint { position:absolute; top:50%; left:0; right:0; transform:translateY(-50%); display:flex; justify-content:space-between; padding:0 16px; pointer-events:none; opacity:0; transition:opacity .3s; }
+    .movie-card:hover .swipe-hint { opacity:.2; }
+    .swipe-hint span { font-size:14px; font-weight:700; color:#fff; letter-spacing:1px; }
+
+    /* ─── MATCH OVERLAY ─── */
+    .match-overlay { position:fixed; inset:0; z-index:100; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,.92); backdrop-filter:blur(12px); opacity:0; transition:opacity .4s; overflow:hidden; }
+    .match-overlay.visible { opacity:1; }
+    .match-bg-rings { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; pointer-events:none; }
+    .ring { position:absolute; border-radius:50%; border:2px solid rgba(229,9,20,.2); animation:ring-expand 2s ease-out infinite; }
+    @keyframes ring-expand { 0%{transform:scale(.5);opacity:.6} 100%{transform:scale(1.5);opacity:0} }
+    .hearts-container { position:absolute; inset:0; pointer-events:none; overflow:hidden; }
+    .heart-particle { position:absolute; animation:burst 1.2s ease-out forwards; transform:translate(-50%,-50%); }
+    @keyframes burst { 0%{opacity:1;transform:translate(-50%,-50%) scale(0)} 50%{opacity:1} 100%{opacity:0;transform:translate(calc(-50% + var(--hx)),calc(-50% + var(--hy))) scale(1)} }
+    .match-content { position:relative; z-index:1; display:flex; flex-direction:column; align-items:center; gap:24px; padding:32px 24px; max-width:400px; width:100%; }
+    .match-label { text-align:center; animation:pop-in .5s cubic-bezier(.34,1.56,.64,1) .1s both; }
+    .match-label-icon { font-size:48px; display:block; margin-bottom:8px; }
+    .match-label h1 { font-size:42px; font-weight:900; background:linear-gradient(135deg,#fff 0%,#e50914 50%,#ff6b6b 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; letter-spacing:-1px; line-height:1; margin-bottom:8px; }
+    .match-label p { font-size:16px; color:rgba(255,255,255,.6); }
+    @keyframes pop-in { from{opacity:0;transform:scale(.5)} to{opacity:1;transform:scale(1)} }
+    .match-movie { display:flex; gap:16px; align-items:center; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1); border-radius:16px; padding:16px; width:100%; animation:pop-in .5s cubic-bezier(.34,1.56,.64,1) .2s both; }
+    .match-poster { width:80px; height:120px; object-fit:cover; border-radius:10px; flex-shrink:0; box-shadow:0 8px 24px rgba(0,0,0,.5); }
+    .match-poster-ph { width:80px; height:120px; border-radius:10px; background:var(--card-bg); display:flex; align-items:center; justify-content:center; font-size:32px; flex-shrink:0; }
+    .match-movie-info { flex:1; min-width:0; display:flex; flex-direction:column; gap:6px; }
+    .match-movie-info h2 { font-size:18px; font-weight:800; line-height:1.2; }
+    .match-year { font-size:13px; color:rgba(255,255,255,.5); }
+    .match-overview-text { font-size:13px; line-height:1.5; color:rgba(255,255,255,.6); }
+    .match-count { font-size:14px; font-weight:600; color:rgba(255,255,255,.7); background:rgba(255,255,255,.06); padding:8px 20px; border-radius:20px; animation:pop-in .5s cubic-bezier(.34,1.56,.64,1) .3s both; }
+    .match-continue-btn { width:100%; padding:16px; border-radius:16px; font-size:17px; font-weight:700; background:linear-gradient(135deg,#e50914,#ff6b6b); color:#fff; transition:all .2s; box-shadow:0 4px 20px rgba(229,9,20,.4); animation:pop-in .5s cubic-bezier(.34,1.56,.64,1) .4s both; }
+    .match-continue-btn:hover { transform:translateY(-2px); }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/react@18.3.1/umd/react.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.28.0/babel.min.js"></script>
+  <script type="text/babel" data-presets="react">
+    const { useState, useEffect, useRef, useCallback, useMemo } = React;
+
+    // ─── CONSTANTS ───────────────────────────────────────────────────────────
+    const TMDB_BASE = 'https://api.themoviedb.org/3';
+    const IMG_BASE  = 'https://image.tmdb.org/t/p/w500';
+    const SESSION_KEY = 'cinedate_v1';
+
+    const TIME_FRAMES = {
+      latest:  { gte:'2025-01-01', lte:'2026-12-31', label:'Latest (2025–26)',  emoji:'🔥' },
+      last5:   { gte:'2021-01-01', lte:'2026-12-31', label:'Last 5 Years',       emoji:'⚡' },
+      decade:  { gte:'2016-01-01', lte:'2026-12-31', label:'Past Decade',        emoji:'📅' },
+      '2010s': { gte:'2010-01-01', lte:'2019-12-31', label:'2010s',              emoji:'💫' },
+      '2000s': { gte:'2000-01-01', lte:'2009-12-31', label:'2000s',              emoji:'🌀' },
+      '90s':   { gte:'1990-01-01', lte:'1999-12-31', label:"90s",               emoji:'🎸' },
+      '80s':   { gte:'1980-01-01', lte:'1989-12-31', label:"80s",               emoji:'🕺' },
+      '70s':   { gte:'1970-01-01', lte:'1979-12-31', label:"70s",               emoji:'✌️' },
+      classic: { gte:'1900-01-01', lte:'1969-12-31', label:'Classics',           emoji:'🎞️' },
+    };
+
+    const GENRE_COLORS = {
+      28:['#e50914','#b00000'], 12:['#00b4d8','#0077b6'], 16:['#ffb703','#fb8500'],
+      35:['#f72585','#b5179e'], 80:['#4a4e69','#22223b'], 99:['#588157','#3a5a40'],
+      18:['#7b2d8b','#4a0e8f'], 14:['#3a86ff','#8338ec'], 36:['#c77dff','#7b2fff'],
+      27:['#370617','#6a040f'], 10402:['#ff006e','#8338ec'], 9648:['#023e8a','#03045e'],
+      10749:['#ff4d6d','#c9184a'], 878:['#0077b6','#023e8a'], 10770:['#6d6875','#4a4e69'],
+      53:['#212529','#495057'], 10752:['#495057','#212529'], 37:['#a47148','#6f4e37'],
+    };
+    const GENRE_EMOJIS = {
+      28:'💥',12:'🗺️',16:'✨',35:'😂',80:'🔫',99:'📽️',18:'🎭',14:'🧙',36:'📜',
+      27:'👻',10402:'🎵',9648:'🔍',10749:'❤️',878:'🚀',10770:'📺',53:'😱',10752:'⚔️',37:'🤠',
+    };
+
+    // ─── STORAGE HELPERS ─────────────────────────────────────────────────────
+    const loadSession = () => { try { return JSON.parse(localStorage.getItem(SESSION_KEY)) || {}; } catch { return {}; } };
+    const saveSession = s => { try { localStorage.setItem(SESSION_KEY, JSON.stringify(s)); } catch {} };
+
+    let broadcastChannel = null;
+    try { broadcastChannel = new BroadcastChannel('cinedate'); } catch {}
+    const broadcast = d => { try { broadcastChannel?.postMessage(d); } catch {} };
+
+    // ─── TMDB HELPERS ────────────────────────────────────────────────────────
+    const TMDB_TOKEN = 'eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiI2YjdkNTg4MjU3ZDdiZDgyNDc2N2RhOTEzZTJjYjQ0MyIsIm5iZiI6MTc3OTg3MDk4NC42NjIwMDAyLCJzdWIiOiI2YTE2YWQwOGQzZDFiODZiYjRkNDdmN2IiLCJzY29wZXMiOlsiYXBpX3JlYWQiXSwidmVyc2lvbiI6MX0.FXTRyn8Kk9l9a281umThH21Us1-isYy6L4ia_VodGIk';
+
+    const tmdbGet = async (path, params = {}) => {
+      const url = new URL(`${TMDB_BASE}${path}`);
+      Object.entries(params).forEach(([k,v]) => { if (v != null && v !== '') url.searchParams.set(k, v); });
+      const res = await fetch(url.toString(), {
+        headers: { Authorization: `Bearer ${TMDB_TOKEN}`, 'Content-Type': 'application/json' }
+      });
+      if (!res.ok) throw new Error(`TMDB ${res.status}`);
+      return res.json();
+    };
+
+    const fetchGenres = () => tmdbGet('/genre/movie/list');
+    const fetchMoviesPage = ({ genreIds = [], timeFrames = [], page = 1 }) => {
+      const ranges = timeFrames.map(k => TIME_FRAMES[k]).filter(Boolean);
+      const gte = ranges.length ? ranges.reduce((m,r) => r.gte < m ? r.gte : m, ranges[0].gte) : null;
+      const lte = ranges.length ? ranges.reduce((m,r) => r.lte > m ? r.lte : m, ranges[0].lte) : null;
+      return tmdbGet('/discover/movie', {
+        with_genres: genreIds.join('|'),   // OR logic — any of the selected genres
+        'primary_release_date.gte': gte,
+        'primary_release_date.lte': lte,
+        sort_by: 'popularity.desc',
+        'vote_count.gte': 30,
+        include_adult: false,
+        page,
+      });
+    };
+    const fetchCredits = async (movieId) => {
+      try {
+        const d = await tmdbGet(`/movie/${movieId}/credits`);
+        return (d.cast || []).slice(0, 4).map(a => a.name);
+      } catch { return []; }
+    };
+    const imgUrl = (path, size = 'w500') => path ? `https://image.tmdb.org/t/p/${size}${path}` : null;
+
+    // ─── MATCH OVERLAY ───────────────────────────────────────────────────────
+    function MatchOverlay({ movie, allMatchCount, onDismiss }) {
+      const [visible, setVisible] = useState(false);
+      useEffect(() => { const t = setTimeout(() => setVisible(true), 50); return () => clearTimeout(t); }, []);
+      const dismiss = () => { setVisible(false); setTimeout(onDismiss, 400); };
+      const poster = imgUrl(movie.poster_path, 'w342');
+      const year = movie.release_date?.slice(0, 4);
+      const hearts = Array.from({length:12}, (_,i) => ({
+        id: i,
+        hx: `${(Math.random()-.5)*300}px`,
+        hy: `${-(Math.random()*300+100)}px`,
+        emoji: ['❤️','🎬','🍿','✨','💫'][Math.floor(Math.random()*5)],
+        size: Math.random()*20+14,
+        delay: i*0.08,
+      }));
+      return (
+        <div className={`match-overlay${visible?' visible':''}`} onClick={dismiss}>
+          <div className="match-bg-rings">
+            {[200,350,500,650].map((s,i) => (
+              <div key={i} className="ring" style={{width:s,height:s,animationDelay:`${i*0.15}s`}} />
+            ))}
+          </div>
+          <div className="hearts-container">
+            {hearts.map(h => (
+              <span key={h.id} className="heart-particle" style={{
+                '--hx': h.hx, '--hy': h.hy,
+                animationDelay: `${h.delay}s`,
+                left: '50%', top: '40%',
+                fontSize: `${h.size}px`,
+              }}>{h.emoji}</span>
+            ))}
+          </div>
+          <div className="match-content" onClick={e => e.stopPropagation()}>
+            <div className="match-label">
+              <span className="match-label-icon">🎉</span>
+              <h1>It's a Match!</h1>
+              <p>You both want to watch this</p>
+            </div>
+            <div className="match-movie">
+              {poster
+                ? <img className="match-poster" src={poster} alt={movie.title} />
+                : <div className="match-poster-ph">🎬</div>
+              }
+              <div className="match-movie-info">
+                <h2>{movie.title}</h2>
+                {year && <span className="match-year">{year}</span>}
+                {movie.overview && (
+                  <p className="match-overview-text">
+                    {movie.overview.length > 100 ? movie.overview.slice(0,100)+'…' : movie.overview}
+                  </p>
+                )}
+              </div>
+            </div>
+            {allMatchCount > 1 && (
+              <div className="match-count">🎯 {allMatchCount} total matches!</div>
+            )}
+            <button className="match-continue-btn" onClick={dismiss}>Keep Swiping →</button>
+          </div>
+        </div>
+      );
+    }
+
+    // ─── MOVIE CARD ──────────────────────────────────────────────────────────
+    const SWIPE_THRESHOLD = 90;
+
+    function MovieCard({ movie, onSwipe, isTop, swipeDir }) {
+      const [dX, setDX] = useState(0);
+      const [dY, setDY] = useState(0);
+      const [dragging, setDragging] = useState(false);
+      const [exitDir, setExitDir] = useState(null);
+      const [entering, setEntering] = useState(true);
+      const [cast, setCast] = useState([]);
+      const start = useRef({x:0,y:0});
+
+      useEffect(() => { const t = setTimeout(() => setEntering(false), 50); return () => clearTimeout(t); }, []);
+
+      useEffect(() => {
+        if (!isTop || !movie?.id) return;
+        fetchCredits(movie.id).then(setCast).catch(() => {});
+      }, [movie?.id, isTop]);
+
+      const triggerSwipe = useCallback((dir) => {
+        if (exitDir) return;
+        setExitDir(dir); setDragging(false);
+        setTimeout(() => onSwipe(dir), 320);
+      }, [exitDir, onSwipe]);
+
+      // External swipe command from action buttons
+      useEffect(() => {
+        if (swipeDir && !entering) triggerSwipe(swipeDir);
+      }, [swipeDir]);
+
+      const onMouseDown = e => {
+        if (exitDir || entering) return;
+        e.preventDefault();
+        setDragging(true);
+        start.current = {x: e.clientX, y: e.clientY};
+      };
+
+      useEffect(() => {
+        if (!dragging) return;
+        const move = e => { setDX(e.clientX - start.current.x); setDY(e.clientY - start.current.y); };
+        const up = () => {
+          setDragging(false);
+          setDX(prev => {
+            if (Math.abs(prev) >= SWIPE_THRESHOLD) triggerSwipe(prev > 0 ? 'right' : 'left');
+            else { setDX(0); setDY(0); }
+            return prev;
+          });
+        };
+        window.addEventListener('mousemove', move);
+        window.addEventListener('mouseup', up);
+        return () => { window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up); };
+      }, [dragging, triggerSwipe]);
+
+      const onTouchStart = e => {
+        if (exitDir || entering) return;
+        const t = e.touches[0];
+        setDragging(true);
+        start.current = {x: t.clientX, y: t.clientY};
+      };
+      const onTouchMove = e => {
+        if (!dragging) return;
+        const t = e.touches[0];
+        setDX(t.clientX - start.current.x);
+        setDY(t.clientY - start.current.y);
+      };
+      const onTouchEnd = () => {
+        setDragging(false);
+        if (Math.abs(dX) >= SWIPE_THRESHOLD) triggerSwipe(dX > 0 ? 'right' : 'left');
+        else { setDX(0); setDY(0); }
+      };
+
+      const rot = dragging ? dX * 0.08 : 0;
+      let transform = `translateX(${dragging ? dX : 0}px) translateY(${entering ? '-110vh' : dragging ? dY*0.3 : 0}px) rotate(${rot}deg)`;
+      let transition = dragging ? 'none' : entering ? 'transform 0.4s cubic-bezier(0.34,1.56,0.64,1)' : 'transform 0.35s ease';
+      if (exitDir === 'left')  { transform = 'translateX(-160vw) rotate(-25deg)'; transition = 'transform 0.32s ease-in'; }
+      if (exitDir === 'right') { transform = 'translateX(160vw) rotate(25deg)';   transition = 'transform 0.32s ease-in'; }
+
+      const likeOp = Math.min(Math.max(dX / SWIPE_THRESHOLD, 0), 1);
+      const nopeOp = Math.min(Math.max(-dX / SWIPE_THRESHOLD, 0), 1);
+
+      const poster = imgUrl(movie.poster_path);
+      const year   = movie.release_date?.slice(0,4) || '—';
+      const rating = movie.vote_average ? movie.vote_average.toFixed(1) : null;
+      const overview = movie.overview ? (movie.overview.length > 120 ? movie.overview.slice(0,120)+'…' : movie.overview) : '';
+
+      return (
+        <div
+          className={`movie-card${dragging?' dragging':''}`}
+          style={{transform, transition}}
+          onMouseDown={onMouseDown}
+          onTouchStart={onTouchStart}
+          onTouchMove={onTouchMove}
+          onTouchEnd={onTouchEnd}
+        >
+          {poster
+            ? <img className="card-poster" src={poster} alt={movie.title} draggable={false} />
+            : <div className="card-poster-placeholder"><span style={{fontSize:64}}>🎬</span><span>{movie.title}</span></div>
+          }
+          <div className="card-gradient" />
+          <div className="badge badge-like" style={{opacity: likeOp}}>LIKE ♥</div>
+          <div className="badge badge-nope" style={{opacity: nopeOp}}>NOPE ✕</div>
+          <div className="card-info">
+            <div className="card-title-row">
+              <h2 className="card-title">{movie.title}</h2>
+              <span className="card-year">{year}</span>
+            </div>
+            {rating && (
+              <div className="card-rating">
+                ⭐ <strong>{rating}</strong>
+                <span className="card-votes">({(movie.vote_count||0).toLocaleString()} votes)</span>
+              </div>
+            )}
+            {cast.length > 0 && (
+              <div className="card-cast">
+                {cast.map((n,i) => <span key={i} className="cast-tag">{n}</span>)}
+              </div>
+            )}
+            <p className="card-overview">{overview}</p>
+          </div>
+          {isTop && !dragging && !exitDir && (
+            <div className="swipe-hint">
+              <span>← Nope</span>
+              <span>Like →</span>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // ─── LOGIN SCREEN ────────────────────────────────────────────────────────
+    const STARS = Array.from({length:20}, (_,i) => ({
+      id: i,
+      left: `${Math.random()*100}%`,
+      top: `${Math.random()*100}%`,
+      delay: `${Math.random()*3}s`,
+      size: `${Math.random()*3+1}px`,
+    }));
+
+    function LoginScreen({ onLogin }) {
+      return (
+        <div className="login-screen">
+          <div className="login-bg">
+            {STARS.map(s => (
+              <div key={s.id} className="star" style={{left:s.left,top:s.top,animationDelay:s.delay,width:s.size,height:s.size}} />
+            ))}
+          </div>
+          <div className="login-content">
+            <div className="login-logo">
+              <span className="logo-icon">🎬</span>
+              <h1 className="logo-text">CinéDate</h1>
+              <p className="logo-sub">Find movies you <em>both</em> love</p>
+            </div>
+            <p className="login-instruction">Who are you?</p>
+            <div className="player-cards">
+              <button className="player-card" onClick={() => onLogin('player1')}>
+                <div className="player-avatar p1">👤</div>
+                <div className="player-info">
+                  <span className="player-name">Player 1</span>
+                  <span className="player-desc">First picker</span>
+                </div>
+                <span className="player-arrow">→</span>
+              </button>
+              <div className="player-divider"><span>or</span></div>
+              <button className="player-card" onClick={() => onLogin('player2')}>
+                <div className="player-avatar p2">👤</div>
+                <div className="player-info">
+                  <span className="player-name">Player 2</span>
+                  <span className="player-desc">Second picker</span>
+                </div>
+                <span className="player-arrow">→</span>
+              </button>
+            </div>
+            <p className="login-hint">💡 Open two browser tabs — one for each player</p>
+          </div>
+        </div>
+      );
+    }
+
+    // ─── GENRE SCREEN ────────────────────────────────────────────────────────
+    function GenreScreen({ player, onNext, session, updateConfig }) {
+      const [genres, setGenres]   = useState([]);
+      const [loading, setLoading] = useState(true);
+      const [fetching, setFetching] = useState(false);
+      const [err, setErr]         = useState(null);
+
+      // Multi-select: arrays
+      const selGenres = session.genreIds || [];
+      const selTimes  = session.timeFrames && session.timeFrames.length ? session.timeFrames : ['decade'];
+
+      useEffect(() => {
+        fetchGenres()
+          .then(d => setGenres(d.genres || []))
+          .catch(e => setErr(e.message))
+          .finally(() => setLoading(false));
+        // Ensure timeFrames is initialised in session
+        if (!session.timeFrames || !session.timeFrames.length) {
+          updateConfig({ timeFrames: ['decade'] });
+        }
+      }, []);
+
+      const toggleGenre = (id, name) => {
+        const cur = session.genreIds || [];
+        const names = session.genreNames || [];
+        const isOn  = cur.includes(id);
+        const newIds   = isOn ? cur.filter(x => x !== id)   : [...cur, id];
+        const newNames = isOn ? names.filter(n => n !== name): [...names, name];
+        updateConfig({ genreIds: newIds, genreNames: newNames });
+      };
+
+      const toggleTime = (key) => {
+        const cur    = session.timeFrames || ['decade'];
+        const isOn   = cur.includes(key);
+        const newVal = isOn && cur.length > 1 ? cur.filter(t => t !== key) : isOn ? cur : [...cur, key];
+        updateConfig({ timeFrames: newVal });
+      };
+
+      const handleStart = async () => {
+        if (!selGenres.length) return;
+        setFetching(true);
+        try {
+          // ── Match-fix: if Player 1 already seeded the session, Player 2 just joins ──
+          const existing = loadSession();
+          if (existing.movies && existing.movies.length > 0 && existing.genreIds && existing.genreIds.length) {
+            onNext();
+            return;
+          }
+          // ── Player 1: fetch fresh movie pool ──
+          const pages = await Promise.all([1,2,3].map(p =>
+            fetchMoviesPage({ genreIds: selGenres, timeFrames: selTimes, page: p })
+          ));
+          const movies = [], seen = new Set();
+          for (const pg of pages) for (const m of pg.results || []) {
+            if (!seen.has(m.id) && m.poster_path) { seen.add(m.id); movies.push(m); }
+          }
+          // Reset swipes/matches only when starting fresh
+          updateConfig({ movies, swipes: {}, matches: [] });
+          onNext();
+        } catch(e) { setErr(e.message); }
+        finally { setFetching(false); }
+      };
+
+      const selCount = selGenres.length;
+      const timeLabel = selTimes.length === 1
+        ? TIME_FRAMES[selTimes[0]]?.label
+        : `${selTimes.length} eras`;
+
+      return (
+        <div className="genre-screen">
+          <div className="genre-header">
+            <div className="genre-header-top">
+              <span className={`player-badge ${player === 'player1' ? 'p1' : 'p2'}`}>
+                {player === 'player1' ? '👤 Player 1' : '👤 Player 2'}
+              </span>
+              <h2>Choose Genres</h2>
+              <p>Pick one or more you're in the mood for</p>
+            </div>
+            <div className="timeframe-section">
+              <span className="section-label">Era</span>
+              <div className="timeframe-chips">
+                {Object.entries(TIME_FRAMES).map(([k,tf]) => (
+                  <button
+                    key={k}
+                    className={`tf-chip${selTimes.includes(k)?' active':''}`}
+                    onClick={() => toggleTime(k)}
+                  >
+                    {tf.emoji} {tf.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="genre-grid-container">
+            {loading ? (
+              <div className="genre-loading">
+                <div className="spinner" />
+                <p>Loading genres…</p>
+              </div>
+            ) : err ? (
+              <div className="genre-loading" style={{color:'#ff6b6b'}}>⚠️ {err}</div>
+            ) : (
+              <div className="genre-grid">
+                {genres.map(g => {
+                  const [c1, c2] = GENRE_COLORS[g.id] || ['#555','#333'];
+                  const emoji    = GENRE_EMOJIS[g.id] || '🎬';
+                  const active   = selGenres.includes(g.id);
+                  return (
+                    <button
+                      key={g.id}
+                      className={`genre-card${active?' active':''}`}
+                      style={{'--g1':c1,'--g2':c2}}
+                      onClick={() => toggleGenre(g.id, g.name)}
+                    >
+                      <span className="genre-emoji">{emoji}</span>
+                      <span className="genre-name">{g.name}</span>
+                      {active && <span className="genre-check">✓</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <div className="genre-footer">
+            {selCount > 0 && (
+              <p className="genre-selection-label">
+                <strong>{selCount} {selCount===1?'genre':'genres'}</strong>
+                {' · '}<span>{timeLabel}</span>
+              </p>
+            )}
+            <div style={{display:'flex',gap:10}}>
+              {loadSession().movies?.length > 0 && (
+                <button
+                  className="start-btn"
+                  style={{flex:'0 0 auto',padding:'16px 18px',background:'rgba(255,255,255,.08)',boxShadow:'none',fontSize:14}}
+                  onClick={() => {
+                    updateConfig({ movies:[], swipes:{}, matches:[], genreIds:[], genreNames:[], timeFrames:['decade'] });
+                  }}
+                  title="Clear session and start fresh"
+                >↺ Reset</button>
+              )}
+              <button
+                className="start-btn"
+                style={{flex:1}}
+                onClick={handleStart}
+                disabled={!selCount || fetching}
+              >
+                {fetching ? <><div className="btn-spinner" /> Loading movies…</> : <>Start Swiping 🎬</>}
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ─── SWIPE SCREEN ────────────────────────────────────────────────────────
+    function SwipeScreen({ player, session, recordSwipe, updateConfig, matches, newMatch, dismissMatch, onLogout }) {
+      const [idx, setIdx]         = useState(0);
+      const [loadingMore, setLoadingMore] = useState(false);
+      const [done, setDone]       = useState(false);
+      const [nextPage, setNextPage] = useState(4);
+      const [externalSwipe, setExternalSwipe] = useState(null);
+
+      const movies = session.movies || [];
+      const totalSwiped = Object.keys((session.swipes?.[player]) || {}).length;
+
+      useEffect(() => {
+        if (!movies.length || loadingMore || done) return;
+        if (idx >= movies.length - 5) loadMore();
+      }, [idx, movies.length, done]);
+
+      const loadMore = async () => {
+        setLoadingMore(true);
+        try {
+          const d = await fetchMoviesPage({
+            genreIds: session.genreIds || (session.genreId ? [session.genreId] : []),
+            timeFrames: session.timeFrames || (session.timeFrame ? [session.timeFrame] : ['decade']),
+            page: nextPage,
+          });
+          const ex = new Set(movies.map(m => m.id));
+          const fresh = (d.results || []).filter(m => !ex.has(m.id) && m.poster_path);
+          if (!fresh.length) { setDone(true); return; }
+          updateConfig({ movies: [...movies, ...fresh] });
+          setNextPage(p => p + 1);
+        } catch { setDone(true); }
+        finally { setLoadingMore(false); }
+      };
+
+      const handleSwipe = useCallback((dir) => {
+        const m = movies[idx];
+        if (!m) return;
+        setExternalSwipe(null);
+        recordSwipe(m.id, dir);
+        setIdx(i => i + 1);
+      }, [movies, idx, recordSwipe]);
+
+      const current = movies[idx];
+      const next    = movies[idx + 1];
+      const outOfCards = !current;
+      const matchMovies = movies.filter(m => matches.includes(String(m.id)) || matches.includes(m.id));
+
+      return (
+        <div className="swipe-screen">
+          <header className="swipe-header">
+            <button className="back-btn" onClick={onLogout}>← Back</button>
+            <div className="header-center">
+              <span className="header-logo">🎬</span>
+              <span className={`player-tag ${player==='player1'?'p1':'p2'}`}>
+                {player==='player1' ? 'Player 1' : 'Player 2'}
+              </span>
+            </div>
+            <div className="header-stats">
+              {matches.length > 0 && <span className="match-badge">❤️ {matches.length}</span>}
+            </div>
+          </header>
+
+          {(session.genreNames?.length || session.genreIds?.length) && (
+            <div className="swipe-meta">
+              <span className="swipe-genre">
+                {session.genreNames?.length
+                  ? session.genreNames.join(' · ')
+                  : `${session.genreIds?.length} genres`}
+              </span>
+              {session.timeFrames?.length > 0 && (
+                <span className="swipe-era">
+                  {session.timeFrames.length === 1
+                    ? TIME_FRAMES[session.timeFrames[0]]?.label
+                    : `${session.timeFrames.length} eras`}
+                </span>
+              )}
+              <span className="swipe-count">{totalSwiped} swiped</span>
+            </div>
+          )}
+
+          <div className="card-stack">
+            {outOfCards ? (
+              <div className="out-of-cards">
+                <span className="ooc-icon">🍿</span>
+                <h2>All done!</h2>
+                <p>You've swiped through all movies</p>
+                {matches.length > 0 ? (
+                  <div className="ooc-matches">
+                    <p>You matched on <strong>{matches.length}</strong> {matches.length===1?'movie':'movies'}!</p>
+                    <div className="ooc-match-list">
+                      {matchMovies.slice(0,5).map(m => <span key={m.id} className="ooc-match-tag">🎬 {m.title}</span>)}
+                    </div>
+                  </div>
+                ) : (
+                  <p className="ooc-sub">Keep swiping with your partner to find matches</p>
+                )}
+                <button className="ooc-back-btn" onClick={onLogout}>Choose Another Genre</button>
+              </div>
+            ) : (
+              <>
+                {next && (
+                  <div className="card-slot card-slot-next">
+                    <MovieCard key={`next-${next.id}`} movie={next} onSwipe={()=>{}} isTop={false} />
+                  </div>
+                )}
+                <div className="card-slot card-slot-current">
+                  <MovieCard
+                    key={`cur-${current.id}-${idx}`}
+                    movie={current}
+                    onSwipe={handleSwipe}
+                    isTop={true}
+                    swipeDir={externalSwipe}
+                  />
+                </div>
+              </>
+            )}
+            {loadingMore && (
+              <div className="loading-more">
+                <div className="loading-dot" /><div className="loading-dot" /><div className="loading-dot" />
+              </div>
+            )}
+          </div>
+
+          {!outOfCards && current && (
+            <div className="action-buttons">
+              <button
+                className="action-btn action-btn-nope"
+                onClick={() => !externalSwipe && setExternalSwipe('left')}
+                disabled={!!externalSwipe}
+              >✕</button>
+              <button className="action-btn action-btn-super" title="Super Like" disabled={!!externalSwipe}>⭐</button>
+              <button
+                className="action-btn action-btn-like"
+                onClick={() => !externalSwipe && setExternalSwipe('right')}
+                disabled={!!externalSwipe}
+              >♥</button>
+            </div>
+          )}
+
+          {matchMovies.length > 0 && (
+            <div className="matches-sidebar">
+              <span className="matches-sidebar-label">❤️ Matches</span>
+              <div className="matches-sidebar-list">
+                {matchMovies.map(m => <span key={m.id} className="match-pill" title={m.title}>🎬 {m.title}</span>)}
+              </div>
+            </div>
+          )}
+
+          {newMatch && (
+            <MatchOverlay movie={newMatch} allMatchCount={matches.length} onDismiss={dismissMatch} />
+          )}
+        </div>
+      );
+    }
+
+    // ─── ROOT APP ────────────────────────────────────────────────────────────
+    const SCREENS = { LOGIN:'login', GENRE:'genre', SWIPE:'swipe' };
+
+    function App() {
+      const [screen, setScreen]     = useState(SCREENS.LOGIN);
+      const [player, setPlayer]     = useState(null);
+      const [session, setSession]   = useState(loadSession);
+      const [newMatch, setNewMatch] = useState(null);
+      const prevMatchIds = useRef(new Set((loadSession().matches || []).map(String)));
+
+      // Listen to BroadcastChannel
+      useEffect(() => {
+        if (!broadcastChannel) return;
+        const handler = e => {
+          if (e.data?.type === 'session_update') applySession(e.data.data);
+          if (e.data?.type === 'session_clear') { setSession({}); setNewMatch(null); prevMatchIds.current = new Set(); }
+        };
+        broadcastChannel.addEventListener('message', handler);
+        return () => broadcastChannel.removeEventListener('message', handler);
+      }, []);
+
+      const applySession = useCallback(s => {
+        setSession(s);
+        const cur = new Set((s.matches || []).map(String));
+        const fresh = [...cur].find(id => !prevMatchIds.current.has(id));
+        if (fresh) {
+          const m = (s.movies || []).find(mv => String(mv.id) === fresh);
+          if (m) setNewMatch(m);
+        }
+        prevMatchIds.current = cur;
+      }, []);
+
+      const updateConfig = useCallback(patch => {
+        const s = { ...loadSession(), ...patch };
+        saveSession(s);
+        setSession(s);
+        broadcast({ type: 'session_update', data: s });
+        return s;
+      }, []);
+
+      const recordSwipe = useCallback((movieId, direction) => {
+        const s = loadSession();
+        if (!s.swipes) s.swipes = {};
+        if (!s.swipes[player]) s.swipes[player] = {};
+        s.swipes[player][String(movieId)] = direction;
+        const p1 = s.swipes.player1 || {}, p2 = s.swipes.player2 || {};
+        const all = new Set([...Object.keys(p1),...Object.keys(p2)]);
+        s.matches = [...all].filter(id => p1[id]==='right' && p2[id]==='right');
+        saveSession(s);
+        applySession(s);
+        broadcast({ type: 'session_update', data: s });
+      }, [player, applySession]);
+
+      const logout = () => { setPlayer(null); setScreen(SCREENS.LOGIN); };
+      const matches = session.matches || [];
+
+      return (
+        <div style={{width:'100%',height:'100%'}}>
+          {screen === SCREENS.LOGIN && <LoginScreen onLogin={p => { setPlayer(p); setScreen(SCREENS.GENRE); }} />}
+          {screen === SCREENS.GENRE && (
+            <GenreScreen
+              player={player} session={session}
+              updateConfig={updateConfig}
+              onNext={() => setScreen(SCREENS.SWIPE)}
+            />
+          )}
+          {screen === SCREENS.SWIPE && (
+            <SwipeScreen
+              player={player} session={session}
+              recordSwipe={recordSwipe} updateConfig={updateConfig}
+              matches={matches} newMatch={newMatch} dismissMatch={() => setNewMatch(null)}
+              onLogout={logout}
+            />
+          )}
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

@@ -1,0 +1,58 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --bg: #0d0d1a;
+  --bg2: #111125;
+  --card-bg: #1a1a2e;
+  --card-border: rgba(255,255,255,0.06);
+  --accent: #e50914;
+  --accent2: #ff6b6b;
+  --gold: #ffd700;
+  --success: #00e676;
+  --error: #ff1744;
+  --like-color: #00e676;
+  --nope-color: #ff1744;
+  --text: #ffffff;
+  --text-muted: #8892a4;
+  --text-dim: #4a5568;
+  --overlay: rgba(13, 13, 26, 0.85);
+  --radius: 20px;
+  --radius-sm: 12px;
+  --shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+  --glow-like: 0 0 30px rgba(0, 230, 118, 0.4);
+  --glow-nope: 0 0 30px rgba(255, 23, 68, 0.4);
+}
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  outline: none;
+  font-family: inherit;
+}
+
+img {
+  display: block;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 4px; }
